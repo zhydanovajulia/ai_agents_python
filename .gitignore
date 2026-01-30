@@ -1,3 +1,13 @@
-.envrc
-.envrc
+# Python
 __pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# macOS
+.DS_Store
+
+# direnv
+.envrc
