@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 from typing import Callable, List
-from core.action_registry import ActionRegistry
-from core.prompt import Prompt
-from core.agent_language import AgentLanguage
-from core.environment import Environment
-from core.goal import Goal
-from core.memory import Memory
+from .action_registry import ActionRegistry
+from .prompt import Prompt
+from .agent_language import AgentLanguage
+from .environment import Environment
+from .goal import Goal
+from .memory import Memory
 
 
 
@@ -28,16 +28,22 @@ class Agent:
         self.environment = environment
 
     def construct_prompt(self, goals: List[Goal], memory: Memory, actions: ActionRegistry) -> Prompt:
+        """Build prompt with memory context"""
         return self.agent_language.construct_prompt(
-            actions=actions.list(),
+            actions=actions.get_actions(),
+            environment=self.environment,
             goals=goals,
             memory=memory
         )
 
     def get_action(self, response):
         invocation = self.agent_language.parse_response(response)
-        action = self.actions.get(invocation["tool"])
+        action = self.actions.get_action(invocation["tool"])
         return action, invocation
+
+    def should_terminate(self, response: str) -> bool:
+        action_def, _ = self.get_action(response)
+        return action_def.terminal
 
     def set_current_task(self, memory: Memory, task: str):
         memory.add_memory({"type": "user", "content": task})
@@ -48,7 +54,7 @@ class Agent:
         """
         new_memories = [
             {"type": "assistant", "content": response},
-            {"type": "user", "content": json.dumps(result)}
+            {"type": "environment", "content": json.dumps(result)}
         ]
         for m in new_memories:
             memory.add_memory(m)
@@ -84,7 +90,7 @@ class Agent:
             self.update_memory(memory, response, result)
 
             # Check if the agent has decided to terminate
-            if action.terminal:
+            if self.should_terminate(response):
                 break
 
         return memory
